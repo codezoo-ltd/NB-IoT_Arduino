@@ -23,44 +23,85 @@ class TPB23
 	/*
 	 * Initialization the module.
 	 */
-	int TPB23_init(void);
+	int init(void);
 
-	/*
+    /*
 	 * Request Manufacturer Revision.
 	 */
-	void TPB23_CGMR(void);
+    int getCGMR(char* szCGMR, int nBufferSize);
 
 	/*
 	 * Request Product Serial Number (returns the IMEI).
 	 */
-	void TPB23_CGSN(void);
+    int getIMEI(char* szIMEI, int nBufferSize);
 
 	/*
-	 * Request Change device functionality.
+	 * Request Change device functionality status. (0-1)
 	 */
-	int TPB23_IsCFUN(void);
+	int getCFUN(int *value);
 
+	/*
+	 * Set Change device functionality. (0-1)
+	 */
+	int setCFUN(int value);
+
+    /*
+	 * Request international mobile subscriber identity.
+	 */
+    int getCIMI(char* szCIMI, int nBufferSize);
+
+    /*
+	 * Define PDP Context. (manual)
+	 */
+	int setPDP(void);
+
+    /*
+	 * PLMN selection. (manual)
+	 */
+    int setPLMN(void);
+
+    /*
+	 * EPS network registration status.
+	 */
+    int canConnect(void);
+
+	/*
+	 * Show PDP Address.
+	 */
+    int getIP(char* szIP, int nBufferSize);
+
+ 	/*
+	 * Get signal strength indicator
+	 */
+    int getCSQ(int *rssi);
 
 	/*
 	 * Reset the module.
 	 */
 //	void TPB23_reset(void);
 
-
 	private:
 	int sendATcmd(char* szCmd, char* szResponse, int nResponseBufSize, 
 			const char* szResponseFilter, unsigned long ulWaitDelay=2000);
 
+    int sendATcmd(char* szCmd, char* aLine[], int nMaxLine,
+            unsigned long ulWaitDelay=2000);
+
 	int readATresponseLine(char* szLine, int nLineBufSize,
 			const char* szResponseFilter, unsigned long ulDelay);
+
+    int readATresponseLine(char* aLine[], int nMaxLine, unsigned long ulDelay);
 
 	void TPB23_serial_clearbuf(void);
 
 	void TPB23_trace(const __FlashStringHelper * szTrace, ... );
 
+    int TPB23_freeRam(void);
+
 	Stream&		_serial;
 	Stream&		_debug;
 	int			_timeOut = 0;
+    int         _nSocket;
 
 };
 #endif

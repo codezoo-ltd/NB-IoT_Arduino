@@ -30,7 +30,7 @@ TPB23::TPB23(Stream& serial, Stream& debug):
 	_serial.setTimeout( (_timeOut+500) );   /* +500ms, Serial TX/RX Timeout default 2000 */  
 }
 
-int	TPB23::TPB23_init()
+int	TPB23::init()
 {
 	char szCmd[16];
 	char resBuffer[16];
@@ -54,52 +54,259 @@ int	TPB23::TPB23_init()
 	return ret;
 }
 
-void TPB23::TPB23_CGMR()
+int TPB23::getCGMR(char* szCGMR, int nBufferSize)
 {
-	char szCmd[16];
-	char resBuffer[16];
+    char    szCmd[16];
+    char*   aLine[NB_LINE];  //let's read up to 20 lines
 
-	TPB23_serial_clearbuf();
+    strcpy(szCmd, "AT+CGMR");
+    int nNbLine = sendATcmd(szCmd, aLine, NB_LINE);
 
-	strcpy(szCmd, "AT+CGMR");
+    char*  sLine;
+    memset(szCGMR, 0, nBufferSize);
 
-	sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK");
+    for (int i=0; i<nNbLine; i++)
+    {
+        sLine = aLine[i];
+
+        SWIR_TRACE(F("getCGMR, line[%d]: %s\n"), i, sLine);
+
+        char * pTemp = sLine;
+        while (pTemp < (sLine+strlen(sLine)))       //trim ending
+        {
+            if (*pTemp == '\r') //remove cariage return
+            {
+                *pTemp = 0; //zero terminate string
+                break;
+            }
+            if (*pTemp == '\n') //remove cariage return
+            {
+                *pTemp = 0; //zero terminate string
+                break;
+            }
+            pTemp++;
+        }
+
+        int nLen = strlen(sLine);
+        if (nLen != 15)
+        {
+            continue;
+        }
+        for (int k=0; k<nLen; k++)
+        {
+            if (sLine[k] < '0' || sLine[k] > '9')
+            {
+                continue;
+            }
+        }
+        strcpy(szCGMR, sLine);
+        free(aLine[i]);
+        free(aLine[i+1]);   /* free "OK" Line memory */
+    }
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return (strlen(szCGMR) > 0 ? 0 : 1);
 }
 
-void TPB23::TPB23_CGSN()
+int TPB23::getIMEI(char* szIMEI, int nBufferSize)
 {
-	char szCmd[16];
-	char resBuffer[16];
+    char    szCmd[16];
+    int     ret;
 
-	TPB23_serial_clearbuf();
+    memset(szIMEI, 0, nBufferSize);
 
 	strcpy(szCmd, "AT+CGSN=1");
+    ret = sendATcmd(szCmd, szIMEI, nBufferSize, "+CGSN:");
 
-	sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "+CGSN:");
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
 
-	SWIR_TRACE(F("IMEI : (%s) "), resBuffer);
+    return ret;
 }
 
-int TPB23::TPB23_IsCFUN()
+int TPB23::getCFUN(int *value)
 {
-	char szCmd[16];
-	char resBuffer[16];
-	int ret=0;
-
-	TPB23_serial_clearbuf();
+	char    szCmd[16];
+	char    resBuffer[16];
+	int     ret, _value;
 
 	strcpy(szCmd, "AT+CFUN?");
 
-	if(!sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "+CFUN:"))
-	{
-		ret = atoi(resBuffer);
-	}
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "+CFUN:");
+    
+    _value = atoi(resBuffer);
+    *value = _value;
 
-	SWIR_TRACE(F("CFUN : (%d) "), ret);
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
 
-	return ret;
+    return ret;
 }
 
+int TPB23::setCFUN(int value)
+{
+	char    szCmd[16];
+	char    resBuffer[16];
+    int     ret;
+
+	sprintf(szCmd, "AT+CFUN=%d",value);
+
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK", 3000);
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
+int TPB23::getCIMI(char* szCIMI, int nBufferSize)
+{
+    char    szCmd[16];
+    char*   aLine[NB_LINE];  //let's read up to 20 lines
+
+    strcpy(szCmd, "AT+CIMI");
+    int nNbLine = sendATcmd(szCmd, aLine, NB_LINE);
+
+    char*  sLine;
+    memset(szCIMI, 0, nBufferSize);
+
+    for (int i=0; i<nNbLine; i++)
+    {
+        sLine = aLine[i];
+
+        SWIR_TRACE(F("getCIMI, line[%d]: %s\n"), i, sLine);
+
+        char * pTemp = sLine;
+        while (pTemp < (sLine+strlen(sLine)))       //trim ending
+        {
+            if (*pTemp == '\r') //remove cariage return
+            {
+                *pTemp = 0; //zero terminate string
+                break;
+            }
+            if (*pTemp == '\n') //remove cariage return
+            {
+                *pTemp = 0; //zero terminate string
+                break;
+            }
+            pTemp++;
+        }
+
+        int nLen = strlen(sLine);
+        if (nLen != 15)
+        {
+            continue;
+        }
+        for (int k=0; k<nLen; k++)
+        {
+            if (sLine[k] < '0' || sLine[k] > '9')
+            {
+                continue;
+            }
+        }
+        strcpy(szCIMI, sLine);
+        free(aLine[i]);
+        free(aLine[i+1]);   /* free "OK" Line memory */
+    }
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return (strlen(szCIMI) > 0 ? 0 : 1);
+}
+
+int TPB23::setPDP()
+{
+	char    szCmd[16];
+	char    resBuffer[16];
+    int     ret;
+
+	strcpy(szCmd, "AT+CGDCONT=1,\"IP\",\"\"");
+
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK");
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
+int TPB23::setPLMN()
+{
+	char    szCmd[16];
+	char    resBuffer[16];
+    int     ret;
+
+	strcpy(szCmd, "AT+COPS=1,2,\"45006\"");
+
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK");
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
+int TPB23::canConnect()
+{
+    char    szATcmd[16];
+    char    resBuffer[16];
+
+    sprintf(szATcmd, "AT+CEREG?");
+    if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "+CEREG"))
+    {
+        char * pszState = NULL;
+
+        pszState = strstr(resBuffer, ",");
+        if (pszState != NULL)
+        {
+            pszState++;
+            if (*pszState == '1' || *pszState == '5')
+            {
+                SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+                return 0;//ready to connect. CEREG equals to 1 (home) nor 5 (roaming)
+            }
+        }
+    }
+
+    SWIR_TRACE(F("Not ready to make data call..."));
+    return 1;   //not attached to GPRS yet
+}
+
+int TPB23::getIP(char* szIP, int nBufferSize)
+{
+    char    szCmd[16];
+    int     ret;
+
+    memset(szIP, 0, nBufferSize);
+
+	strcpy(szCmd, "AT+CGPADDR");
+    ret = sendATcmd(szCmd, szIP, nBufferSize, "+CGPADDR:0,",3000);
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
+int TPB23::getCSQ(int *rssi)
+{
+    char    szATcmd[16];
+    char    resBuffer[16];
+    int     csq;
+
+    sprintf(szATcmd, "AT+CSQ");
+    if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "+CSQ:"))
+    {
+        csq = atoi(resBuffer);
+
+        if(csq == 99)
+            return 1;// Not ready Network
+        else{
+            SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+            SWIR_TRACE(F("csq %d \r\n"), csq);
+            *rssi = -113 + (2 * csq);
+            return 0;
+        }
+    }
+
+    SWIR_TRACE(F("Not ready Network..."));
+    return 1;   //not attached to GPRS yet
+}
 
 int TPB23::sendATcmd(char* szCmd, char* szResponse, int nResponseBufSize, 
 		const char* szResponseFilter, unsigned long ulWaitDelay)
@@ -126,6 +333,31 @@ int TPB23::sendATcmd(char* szCmd, char* szResponse, int nResponseBufSize,
 	}
 
 	return nRet;
+}
+
+int TPB23::sendATcmd(char * szCmd, char* aLine[], int nMaxLine, unsigned long ulWaitDelay)
+{
+    int nRet = 0;
+
+    SWIR_TRACE(F("sendATcmd2 (%s) - %d..."), szCmd, ulWaitDelay);
+
+    SWIR_TRACE(F("sendATcmd2 (%s)..."), szCmd);
+
+    _serial.setTimeout(ulWaitDelay+500);
+	_serial.println(szCmd);
+
+    nRet = readATresponseLine(aLine, nMaxLine, ulWaitDelay);
+
+    if (nRet > 0)
+    {
+        SWIR_TRACE(F("...sendATcmd OK"));
+    }
+    else
+    {
+        SWIR_TRACE(F("...sendATcmd Fails"));
+    }
+
+    return nRet;
 }
 
 int TPB23::readATresponseLine(char* szLine, int nLineBufSize, 
@@ -227,6 +459,49 @@ int TPB23::readATresponseLine(char* szLine, int nLineBufSize,
 	return nRet;
 }
 
+int TPB23::readATresponseLine(char* aLine[], int nMaxLine, unsigned long ulDelay)
+{
+    int             nbLine = 0;
+    Countdown       oCountDown(ulDelay);
+    char *          pszSubstr = NULL;
+
+    memset(aLine, 0, nMaxLine);
+
+    do
+    {
+        if (_serial.available())
+        {
+            String sStr;
+            sStr = _serial.readStringUntil('\n');
+            int nLen = sStr.length();
+            if (nLen > 1)
+            {
+                aLine[nbLine] = (char *) malloc(nLen+1);
+                sStr.toCharArray(aLine[nbLine], nLen);
+
+                aLine[nbLine][nLen] = 0;
+
+                pszSubstr = strstr(aLine[nbLine], "OK");
+                if (pszSubstr != NULL)
+                {
+                    nbLine++;
+                    SWIR_TRACE(F("Found OK"));
+                    break;
+                }
+
+                nbLine++;
+            }
+        }
+        if (nbLine >= nMaxLine)
+        {
+            break;
+        }
+    } while (!oCountDown.expired());
+
+    SWIR_TRACE(F("readATresponseLine2: %d line(s)\n"), nbLine);
+
+    return nbLine;
+}
 
 void TPB23::TPB23_serial_clearbuf()
 {
@@ -253,5 +528,13 @@ void TPB23::TPB23_trace(const __FlashStringHelper * szTrace, ... )
 
 	_debug.println(szBuf);
 #endif	
+}
+
+int TPB23::TPB23_freeRam()
+{
+    extern int __heap_start, *__brkval;
+    int v;
+
+    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
