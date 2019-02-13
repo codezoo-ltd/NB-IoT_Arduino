@@ -18,6 +18,8 @@ void setup() {
     DebugSerial.println("TPB23 Module Error!!!");
   }
   
+  delay(2000);
+  
   DebugSerial.println("TPB23 Module Initialization!!!");
     
 }
@@ -104,8 +106,7 @@ else
     DebugSerial.println(szIP);
     DebugSerial.println("Thank you!!!");
   }
-    
-#endif
+
 int rssi;
   if( !TPB23.getCSQ(&rssi) )
   {
@@ -114,7 +115,75 @@ int rssi;
     DebugSerial.println("");
   }
 
+int sPower;
+  if( !TPB23.getSignalPower(&sPower) )
+  {
+    DebugSerial.print("Signal Power : ");
+    DebugSerial.print(sPower);
+    DebugSerial.println("");
+  }
 
+int snR;
+  if( !TPB23.getSnr(&snR) )
+  {
+    DebugSerial.print("SNR : ");
+    DebugSerial.print(snR);
+    DebugSerial.println("");
+  }
+
+/* UDP Socket Create & Close */
+  if( !TPB23.socketCreate(1024) ) /* A number in the range 0-65535 except 5683 */
+    DebugSerial.println("Socket Create!!!");
+  
   delay(2000);
+
+  if( !TPB23.socketClose() )
+    DebugSerial.println("Socket Close!!!");
+
+
     
+#endif
+/* Ublox UDP server */
+//char _IP[] = "195.34.89.241";
+//int  _PORT = 7;
+
+/* CodeZoo UDP server */
+char _IP[] = "175.193.45.24";
+int  _PORT = 5203;
+
+//char sendBuffer[] = "Hello CodeZoo !!!";
+char sendBuffer[32];
+char recvBuffer[32];
+
+memset(sendBuffer, 0, sizeof(sendBuffer));
+
+for(int k=0; k<32; k++)
+  sendBuffer[k] = k;
+
+
+/* UDP Socket Create & Close */
+  if( !TPB23.socketCreate(1024) ) /* A number in the range 0-65535 except 5683 */
+    DebugSerial.println("Socket Create!!!");
+    
+if( !TPB23.socketSend(_IP, _PORT, sendBuffer, sizeof(sendBuffer), 1) )
+  DebugSerial.println("UDP Send!!!");
+else
+  DebugSerial.println("Send Fail!!!");
+  
+
+if( !TPB23.socketRecv(recvBuffer, sizeof(recvBuffer), 5000) ){  
+  DebugSerial.println("UDP Recv>>>>>>>>>>>>>>>>\r\n");
+  for(int j=0; j<32; j++){
+    DebugSerial.print(recvBuffer[j],DEC);
+    DebugSerial.print(',');
+  }
+  DebugSerial.println();
+}
+else
+  DebugSerial.println("Recv Fail!!!");
+
+
+  if( !TPB23.socketClose() )
+    DebugSerial.println("Socket Close!!!");  
+  delay(2000);      
 }
