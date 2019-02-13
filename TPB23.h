@@ -71,9 +71,40 @@ class TPB23
     int getIP(char* szIP, int nBufferSize);
 
  	/*
-	 * Get signal strength indicator
+	 * Get signal strength indicator.
 	 */
     int getCSQ(int *rssi);
+
+	/*
+	 * Get signal power.
+	 */
+    int getSignalPower(int *sigPower);
+
+	/*
+	 * Get signal to noise ratio.
+	 */
+    int getSnr(int *snr);
+
+	/*
+	 * Create UDP Socket.	listen port (0-65535, except 5683)
+	 */
+    int socketCreate(int localPort);
+
+	/*
+	 * Close UDP Socket.
+	 */
+    int socketClose(void);
+
+	/*
+	 * Send UDP Socket.
+	 */
+	int socketSend(char* remoteIP, int remotePort, char* buffer, int size, int echo);
+
+	int socketSend(char* remoteIP, int remotePort, const char* str, int echo);
+	/*
+	 * Receive UDP Socket.
+	 */
+	int socketRecv(char* buffer, int bufferSize, unsigned long timeout);
 
 	/*
 	 * Reset the module.
@@ -81,11 +112,18 @@ class TPB23
 //	void TPB23_reset(void);
 
 	private:
+
+	int sendUDPcmd(char* szCmd, char* szResponse, int nResponseBufSize,
+			const char* szResponseFilter, unsigned long ulWaitDelay=2000);
+
 	int sendATcmd(char* szCmd, char* szResponse, int nResponseBufSize, 
 			const char* szResponseFilter, unsigned long ulWaitDelay=2000);
 
     int sendATcmd(char* szCmd, char* aLine[], int nMaxLine,
             unsigned long ulWaitDelay=2000);
+
+	int readUDPresponseLine(char* szLine, int nLineBufSize,
+			const char* szResponseFilter, unsigned long ulDelay);
 
 	int readATresponseLine(char* szLine, int nLineBufSize,
 			const char* szResponseFilter, unsigned long ulDelay);
@@ -102,6 +140,7 @@ class TPB23
 	Stream&		_debug;
 	int			_timeOut = 0;
     int         _nSocket;
+	int			_readUDP;
 
 };
 #endif
