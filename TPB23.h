@@ -1,7 +1,7 @@
 /*
  * A library for controlling TPB23 NB-IoT.
  *
- * @Author Rooney.Jang
+ * @Author Rooney.Jang  [CodeZoo]
  * @Date 01/28/2018
  *
  */
@@ -38,7 +38,7 @@ class TPB23
 	/*
 	 * Request Change device functionality status. (0-1)
 	 */
-	int getCFUN(int *value);
+	int getCFUN(int* value);
 
 	/*
 	 * Set Change device functionality. (0-1)
@@ -73,17 +73,17 @@ class TPB23
  	/*
 	 * Get signal strength indicator.
 	 */
-    int getCSQ(int *rssi);
+    int getCSQ(int* rssi);
 
 	/*
 	 * Get signal power.
 	 */
-    int getSignalPower(int *sigPower);
+    int getSignalPower(int* sigPower);
 
 	/*
 	 * Get signal to noise ratio.
 	 */
-    int getSnr(int *snr);
+    int getSnr(int* snr);
 
 	/*
 	 * Create UDP Socket.	listen port (0-65535, except 5683)
@@ -132,7 +132,7 @@ class TPB23
 
 	void TPB23_serial_clearbuf(void);
 
-	void TPB23_trace(const __FlashStringHelper * szTrace, ... );
+	void TPB23_trace(const __FlashStringHelper* szTrace, ... );
 
     int TPB23_freeRam(void);
 
