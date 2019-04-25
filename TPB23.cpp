@@ -14,6 +14,7 @@ extern "C" {
 #include "stdlib.h"
 }
 
+//#define __NB_IOT_DEBUG
 #define SWIR_TRACE(...)     TPB23_trace(__VA_ARGS__);
 #define TRACE_BUFFER_SIZE   256
 #define NB_LINE 20    //Limit 20 Line
@@ -54,6 +55,9 @@ int	TPB23::init()
 			break;
 
 	}while(cnt<10);
+
+	strcpy(szCmd, "AT+CEREG=3");
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK", 3000);
 
 	return ret;
 }
@@ -337,6 +341,28 @@ int TPB23::getSignalPower(int* sigPower)
     return 1;
 }
 
+int TPB23::getTxPower(int* txPower)
+{
+	char    szATcmd[16];
+	char    resBuffer[16];
+	int		TxPower;
+
+	sprintf(szATcmd, "AT+NUESTATS");
+	if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "TX power:", 4000))
+	{
+		TxPower = atoi(resBuffer);
+
+		SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+		SWIR_TRACE(F("TX Power %d \r\n"), TxPower);
+
+		*txPower = TxPower;
+		return 0;
+	}
+
+	SWIR_TRACE(F("get Signal Power Fail..."));
+	return 1;
+}
+
 int TPB23::getSnr(int* snr)
 {
     char    szATcmd[16];
@@ -359,13 +385,66 @@ int TPB23::getSnr(int* snr)
     return 1;
 }
 
-int TPB23::socketCreate(int localPort)
+int TPB23::getServingCell(char* servingCell)
+{
+	char    szATcmd[16];
+	char    resBuffer[16];
+	int		ServingCell;
+
+	sprintf(szATcmd, "AT+CEREG?");
+	if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "+CEREG"))
+	{
+		char* pszState = NULL;
+		char* pszState2 = NULL;
+
+		// CEREG=3의 경우, return 형식은 +CEREG:3,<stat>,<tac>,<ci>,<act>,<cause_type>,<reject_cause>
+		// stat
+		pszState = strstr(resBuffer, ",");
+		if (pszState != NULL)
+		{
+			pszState++;
+			// tac
+			pszState = strstr(pszState, ",");
+			if (pszState != NULL)
+			{
+				pszState++;
+				// ci
+				pszState2 = strstr(pszState, ",");
+				SWIR_TRACE(F("getServingCell pszState2: %s\r\n"), pszState2+1);
+				pszState = strstr(pszState2+1, ",");
+				SWIR_TRACE(F("getServingCell pszState: %s\r\n"), pszState);
+				SWIR_TRACE(F("getServingCell size : %d\r\n"), pszState - pszState2 - 1);
+				if (pszState != NULL)
+				{
+#if 1
+					int i;
+					for (i = 0; i < (pszState - pszState2 - 1); i++)
+					{
+						*(servingCell+i) = *(pszState2+i + 1);
+					}
+					*(servingCell+i) = 0;
+#else
+					pszState2++;
+					strncpy(servingCell, pszState2+1, pszState - pszState2-1);
+					servingCell[pszState - pszState2 - 1] = 0x00;
+#endif
+					return 0;
+				}
+			}
+		}
+	}
+
+	SWIR_TRACE(F("get Serving Cell Fail..."));
+	return 1;
+}
+
+int TPB23::socketCreate(unsigned long localPort)
 {
 	char    szCmd[32];
 	char	recvBuf[16];
 	char*   aLine[NB_LINE];  //read up to 20 lines
 
-    sprintf(szCmd, "AT+NSOCR=DGRAM,17,%d,1",localPort);
+    sprintf(szCmd, "AT+NSOCR=DGRAM,17,%ld,1",localPort);
     int nNbLine = sendATcmd(szCmd, aLine, NB_LINE);
 
 	char*  sLine;
@@ -436,7 +515,7 @@ int TPB23::socketClose()
 #define HIGH_NIBBLE(i) ((i >> 4) & 0x0F)
 #define LOW_NIBBLE(i) (i & 0x0F)
 
-int TPB23::socketSend(char* remoteIP, int remotePort, char* buffer, int size, int echo)
+int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int size, int echo)
 {
 	char	resBuffer[16];
     char*   sendBuffer;
@@ -455,9 +534,10 @@ int TPB23::socketSend(char* remoteIP, int remotePort, char* buffer, int size, in
 
     memset(sendBuffer, 0, bufferSize);
 
-    sprintf(sendBuffer, "AT+NSOST=%d,%s,%d,%d,", _nSocket, remoteIP, remotePort, size);
+    sprintf(sendBuffer, "AT+NSOST=%d,%s,%ld,%d,", _nSocket, remoteIP, remotePort, size);
 
     pSeek = strlen(sendBuffer);
+	SWIR_TRACE(F("sendBuffer (%s)..."), sendBuffer);
     SWIR_TRACE(F("pSeek [%d]\n"), pSeek);
     pSendBuffer = sendBuffer;
     pSendBuffer += pSeek;
@@ -489,7 +569,7 @@ int TPB23::socketSend(char* remoteIP, int remotePort, char* buffer, int size, in
 	return ret;
 }
 
-int TPB23::socketSend(char* remoteIP, int remotePort, const char* str, int echo)
+int TPB23::socketSend(char* remoteIP, unsigned long remotePort, const char* str, int echo)
 {
 	return socketSend(remoteIP, remotePort, (char *)str, strlen(str), echo);
 }

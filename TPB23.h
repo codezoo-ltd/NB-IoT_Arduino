@@ -76,9 +76,19 @@ class TPB23
     int getCSQ(int* rssi);
 
 	/*
+	 * Get serving cell information.
+	 */
+	int getServingCell(char* servingCell);
+
+	/*
 	 * Get signal power.
 	 */
     int getSignalPower(int* sigPower);
+
+	/*
+	 * Get TX power.
+	 */
+	int getTxPower(int* txPower);
 
 	/*
 	 * Get signal to noise ratio.
@@ -88,7 +98,7 @@ class TPB23
 	/*
 	 * Create UDP Socket.	listen port (0-65535, except 5683)
 	 */
-    int socketCreate(int localPort);
+    int socketCreate(unsigned long localPort);
 
 	/*
 	 * Close UDP Socket.
@@ -98,9 +108,9 @@ class TPB23
 	/*
 	 * Send UDP Socket.
 	 */
-	int socketSend(char* remoteIP, int remotePort, char* buffer, int size, int echo);
+	int socketSend(char* remoteIP, unsigned long remotePort, char* buffer, int size, int echo);
 
-	int socketSend(char* remoteIP, int remotePort, const char* str, int echo);
+	int socketSend(char* remoteIP, unsigned long remotePort, const char* str, int echo);
 	/*
 	 * Receive UDP Socket.
 	 */
