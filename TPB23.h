@@ -98,7 +98,7 @@ class TPB23
 	/*
 	 * Create UDP Socket.	listen port (0-65535, except 5683)
 	 */
-    int socketCreate(unsigned long localPort);
+    int socketCreate(unsigned long localPort, int enableRecv=1);
 
 	/*
 	 * Close UDP Socket.
@@ -108,18 +108,23 @@ class TPB23
 	/*
 	 * Send UDP Socket.
 	 */
-	int socketSend(char* remoteIP, unsigned long remotePort, char* buffer, int size, int echo);
+	int socketSend(char* remoteIP, unsigned long remotePort, char* buffer, int size);
 
-	int socketSend(char* remoteIP, unsigned long remotePort, const char* str, int echo);
+	int socketSend(char* remoteIP, unsigned long remotePort, const char* str);
 	/*
 	 * Receive UDP Socket.
 	 */
 	int socketRecv(char* buffer, int bufferSize, unsigned long timeout);
 
 	/*
+	 * Report Device Network Status.
+	 */
+	int reportDevice(void);
+
+	/*
 	 * Reset the module.
 	 */
-//	void TPB23_reset(void);
+	//	void TPB23_reset(void);
 
 	private:
 
@@ -151,6 +156,7 @@ class TPB23
 	int			_timeOut = 0;
     int         _nSocket;
 	int			_readUDP;
+	int			_enableRecv;
 
 };
 #endif

@@ -14,7 +14,6 @@ extern "C" {
 #include "stdlib.h"
 }
 
-//#define __NB_IOT_DEBUG
 #define SWIR_TRACE(...)     TPB23_trace(__VA_ARGS__);
 #define TRACE_BUFFER_SIZE   256
 #define NB_LINE 20    //Limit 20 Line
@@ -438,13 +437,15 @@ int TPB23::getServingCell(char* servingCell)
 	return 1;
 }
 
-int TPB23::socketCreate(unsigned long localPort)
+int TPB23::socketCreate(unsigned long localPort, int enableRecv)
 {
 	char    szCmd[32];
 	char	recvBuf[16];
 	char*   aLine[NB_LINE];  //read up to 20 lines
 
-    sprintf(szCmd, "AT+NSOCR=DGRAM,17,%ld,1",localPort);
+	_enableRecv = enableRecv; 
+
+    sprintf(szCmd, "AT+NSOCR=DGRAM,17,%ld,%d",localPort, _enableRecv);
     int nNbLine = sendATcmd(szCmd, aLine, NB_LINE);
 
 	char*  sLine;
@@ -515,7 +516,7 @@ int TPB23::socketClose()
 #define HIGH_NIBBLE(i) ((i >> 4) & 0x0F)
 #define LOW_NIBBLE(i) (i & 0x0F)
 
-int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int size, int echo)
+int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int size)
 {
 	char	resBuffer[16];
     char*   sendBuffer;
@@ -556,7 +557,7 @@ int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int
 
 	ret = readATresponseLine(resBuffer, sizeof(resBuffer), "OK", 5000);
 
-	if(echo)
+	if(_enableRecv)
 	{	
 		ret = readATresponseLine(resBuffer, sizeof(resBuffer), "+NSONMI:", 8000);
 		if(!ret){				
@@ -569,9 +570,9 @@ int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int
 	return ret;
 }
 
-int TPB23::socketSend(char* remoteIP, unsigned long remotePort, const char* str, int echo)
+int TPB23::socketSend(char* remoteIP, unsigned long remotePort, const char* str)
 {
-	return socketSend(remoteIP, remotePort, (char *)str, strlen(str), echo);
+	return socketSend(remoteIP, remotePort, (char *)str, strlen(str));
 }
 
 #define HEX_CHAR_TO_NIBBLE(c) ((c >= 'A') ? (c - 'A' + 0x0A) : (c - '0'))
@@ -962,3 +963,153 @@ int TPB23::TPB23_freeRam()
     return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
+int TPB23::reportDevice()
+{
+	char _IP[] = "10.120.182.10";
+	unsigned long  _PORT = 50000;
+
+	int i;
+	int intValue;
+    char makeBuffer[42];
+	char tempBuffer[20];
+
+	memset(makeBuffer, 0x0, sizeof(makeBuffer));
+	memset(tempBuffer, 0x0, sizeof(tempBuffer));
+
+    //msg version
+    makeBuffer[0] = 0x01;
+
+	//ctn
+    makeBuffer[1] = 0x06;	
+
+	//Get CIMI
+    if(getCIMI(tempBuffer, sizeof(tempBuffer)) == 0)
+    {
+		SWIR_TRACE(F("CIMI : %s\n"), tempBuffer );
+    }
+
+	//Set CIMI
+    for(i=0;i<5;i++)
+    {
+      makeBuffer[2+i] = ((tempBuffer[5+i*2] - '0') << 4) + (tempBuffer[6+i*2] - '0');
+    }
+
+    //battery
+    makeBuffer[7] = 0x00;
+    makeBuffer[8] = 0x00;
+    makeBuffer[9] = 0x00;
+
+	//Get ServingCell
+	memset(tempBuffer, 0x0, sizeof(tempBuffer));
+    if(getServingCell(tempBuffer) == 0)
+    {
+		SWIR_TRACE(F("ServingCell : %s\n"), tempBuffer );
+    }
+    else
+    {
+		SWIR_TRACE(F("ServingCell don't read\n"));
+    }
+
+    //Serving ECGI
+    for(i=0;i<4;i++)
+    {
+      makeBuffer[10+i] = ((tempBuffer[0+2*i]-'0') << 4) + (tempBuffer[1+2*i]-'0');
+    }
+
+	//Get RSSI
+	intValue = 0;
+
+    if(getCSQ( &intValue ) == 0)
+    {
+		SWIR_TRACE(F("RSSI : %d\n"), intValue );
+    }
+
+	//RSRP
+    intValue *= (-1);
+    makeBuffer[14] = intValue / 100;
+    makeBuffer[15] = ((( intValue % 100 ) / 10 )  << 4 ) + ( intValue % 10 );
+
+    //Get SNR
+	intValue = 0;
+
+    if(getSnr( &intValue ) == 0)
+    {
+		SWIR_TRACE(F("SNR : %d\n"), intValue );
+    }
+
+    //SINR
+    if( intValue < 0)
+    {
+      makeBuffer[16] = 0x01;
+      intValue *= (-1);
+    }
+    else
+      makeBuffer[16] = 0x00;
+
+    intValue /= 10;
+    makeBuffer[17] = (( intValue / 10 ) << 4 ) + ( intValue % 10 );
+	SWIR_TRACE(F("SINR/10 : %d, buffer[17] : %d\n"), intValue, makeBuffer[17] );
+
+    //Model Name Length
+    makeBuffer[18] = 0x04;
+    //Model Name TEST
+    makeBuffer[19] = 'T';
+    makeBuffer[20] = 'E';
+    makeBuffer[21] = 'S';
+    makeBuffer[22] = 'T';
+
+    //FW Ver Length
+    makeBuffer[23] = 0x04;
+    //FW Ver V1.0
+    makeBuffer[24] = 'V';
+    makeBuffer[25] = '1';
+    makeBuffer[26] = '.';
+    makeBuffer[27] = '0';
+
+    //Get Signal Power
+	intValue = 0;
+
+    if(getSignalPower( &intValue ) == 0)
+    {
+		SWIR_TRACE(F("Signal Power : %d\n"), intValue );
+    }
+
+    //TX Power
+    if( intValue < 0 )
+    {
+      makeBuffer[28] = 0x01;
+      intValue *= (-1);
+    }
+    else
+      makeBuffer[28] = 0x00;
+
+    intValue /= 10;
+    makeBuffer[29] = (( intValue / 10 ) << 4 ) + ( intValue % 10 );
+	SWIR_TRACE(F("SIGPOWER/10 : %d, buffer[29] : %d\n"), intValue, makeBuffer[29] );
+
+    //Position coordinates
+    for(i=0;i<11;i++)
+      makeBuffer[30+i] = 0x00;
+    
+    //Reserve Maximum 20byte
+    makeBuffer[41] = 0x00;
+
+    if(socketCreate(50000, 0) == 0) 
+		SWIR_TRACE(F("Socket Create!!!\n"));
+
+    /* Socket Send */
+    if(socketSend(_IP, _PORT, makeBuffer, 42) == 0){
+		SWIR_TRACE(F("Socket Send!!!\n"));
+		intValue = 0;
+    }
+    else{
+		SWIR_TRACE(F("Socket Send Fail!!!\n"));
+		intValue = 1;
+	}
+
+	/* Socket Close */
+    if(socketClose() == 0)
+		SWIR_TRACE(F("Socket Close!!!\n"));
+
+	return intValue;
+}
