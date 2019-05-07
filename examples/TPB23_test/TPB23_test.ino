@@ -178,7 +178,7 @@ void loop() {
 
 	/* NB-IoT Network Detatch */
 	if(TPB23.setCFUN(0) == 0)
-		DebugSerial.println("NB-IoT Network Detatch");
+		DebugSerial.println("NB-IoT Network Detach");
 
 	delay(2000);        
 
@@ -234,7 +234,7 @@ void loop() {
 
 	/* NB-IoT Network Detatch */
 	if(TPB23.setCFUN(0) == 0)
-		DebugSerial.println("NB-IoT Network Detatch");
+		DebugSerial.println("NB-IoT Network Detach");
 
 	delay(2000);        
 

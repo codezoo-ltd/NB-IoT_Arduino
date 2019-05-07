@@ -1113,3 +1113,20 @@ int TPB23::reportDevice()
 
 	return intValue;
 }
+
+int TPB23::disablePSM()
+{
+	char    szCmd[16];
+	char    resBuffer[16];
+    int     ret;
+
+	int		value = 0;
+
+	sprintf(szCmd, "AT+CPSMS=%d",value);
+
+	ret = sendATcmd(szCmd, resBuffer, sizeof(resBuffer), "OK", 3000);
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}

@@ -122,6 +122,11 @@ class TPB23
 	int reportDevice(void);
 
 	/*
+	 * Experimental function.
+	 */
+	int disablePSM(void);
+
+	/*
 	 * Reset the module.
 	 */
 	//	void TPB23_reset(void);
