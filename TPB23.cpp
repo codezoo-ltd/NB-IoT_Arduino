@@ -388,7 +388,6 @@ int TPB23::getServingCell(char* servingCell)
 {
 	char    szATcmd[16];
 	char    resBuffer[16];
-	int		ServingCell;
 
 	sprintf(szATcmd, "AT+CEREG?");
 	if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "+CEREG"))
@@ -436,7 +435,69 @@ int TPB23::getServingCell(char* servingCell)
 	SWIR_TRACE(F("get Serving Cell Fail..."));
 	return 1;
 }
+#if 0
+int TPB23::getRejectCause(char* rejectCause)
+{
+	char    szATcmd[16];
+	char    resBuffer[16];
 
+	sprintf(szATcmd, "AT+CEREG?");
+	if (0 == sendATcmd(szATcmd, resBuffer, sizeof(resBuffer), "+CEREG"))
+	{
+		char* pszState = NULL;
+		char* pszState2 = NULL;
+
+		// CEREG=3의 경우, return 형식은 +CEREG:3,<stat>,<tac>,<ci>,<act>,<cause_type>,<reject_cause>
+		// stat
+		pszState = strstr(resBuffer, ",");
+		if (pszState != NULL)
+		{
+			pszState++;
+			// tac
+			pszState = strstr(pszState, ",");
+			if (pszState != NULL)
+			{
+				pszState++;
+				// ci
+				pszState = strstr(pszState, ",");
+				if (pszState != NULL)
+				{
+					// act
+					pszState = strstr(pszState, ",");
+					if (pszState != NULL)
+					{
+						// cause_type
+						pszState = strstr(pszState, ",");
+						if (pszState != NULL)
+						{
+							// reject cause
+							pszState2 = strstr(pszState, ",");
+							SWIR_TRACE(F("getRejectCause pszState2: %s\r\n"), pszState2 + 1);
+							pszState = strstr(pszState2 + 1, ",");
+							SWIR_TRACE(F("getRejectCause pszState: %s\r\n"), pszState);
+							SWIR_TRACE(F("getRejectCause size : %d\r\n"), pszState - pszState2 - 1);
+
+							if (pszState != NULL)
+							{
+								int i;
+								for (i = 0; i < (pszState - pszState2 - 1); i++)
+								{
+									*(rejectCause + i) = *(pszState2 + i + 1);
+								}
+								*(rejectCause + i) = 0;
+								return 0;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	SWIR_TRACE(F("get reject cause Fail..."));
+	return 1;
+}
+#endif
 int TPB23::socketCreate(unsigned long localPort, int enableRecv)
 {
 	char    szCmd[32];
@@ -580,7 +641,7 @@ int TPB23::socketSend(char* remoteIP, unsigned long remotePort, const char* str)
 int TPB23::socketRecv(char* buffer, int bufferSize, unsigned long timeout)
 {
 	char	szCmd[16];
-	char	resBuffer[32];
+	char	resBuffer[40];
 	char*   temp;
 	int		ret, tempLength;
 
@@ -1066,12 +1127,12 @@ int TPB23::reportDevice()
     makeBuffer[26] = '.';
     makeBuffer[27] = '0';
 
-    //Get Signal Power
+    //Get TX Power
 	intValue = 0;
 
-    if(getSignalPower( &intValue ) == 0)
+    if(getTxPower( &intValue ) == 0)
     {
-		SWIR_TRACE(F("Signal Power : %d\n"), intValue );
+		SWIR_TRACE(F("Tx Power : %d\n"), intValue );
     }
 
     //TX Power
@@ -1085,7 +1146,7 @@ int TPB23::reportDevice()
 
     intValue /= 10;
     makeBuffer[29] = (( intValue / 10 ) << 4 ) + ( intValue % 10 );
-	SWIR_TRACE(F("SIGPOWER/10 : %d, buffer[29] : %d\n"), intValue, makeBuffer[29] );
+	SWIR_TRACE(F("TxPOWER/10 : %d, buffer[29] : %d\n"), intValue, makeBuffer[29] );
 
     //Position coordinates
     for(i=0;i<11;i++)
