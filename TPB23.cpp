@@ -1041,7 +1041,7 @@ int TPB23::reportDevice()
     makeBuffer[0] = 0x01;
 
 	//ctn
-    makeBuffer[1] = 0x06;	
+    makeBuffer[1] = 0x00;	
 
 	//Get CIMI
     if(getCIMI(tempBuffer, sizeof(tempBuffer)) == 0)
