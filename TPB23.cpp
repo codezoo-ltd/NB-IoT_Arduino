@@ -1031,7 +1031,7 @@ int TPB23::reportDevice()
 
 	int i;
 	int intValue;
-    char makeBuffer[42];
+    char makeBuffer[52];
 	char tempBuffer[20];
 
 	memset(makeBuffer, 0x0, sizeof(makeBuffer));
@@ -1112,20 +1112,30 @@ int TPB23::reportDevice()
 	SWIR_TRACE(F("SINR/10 : %d, buffer[17] : %d\n"), intValue, makeBuffer[17] );
 
     //Model Name Length
-    makeBuffer[18] = 0x04;
+    makeBuffer[18] = 0x0e;
     //Model Name TEST
-    makeBuffer[19] = 'T';
-    makeBuffer[20] = 'E';
-    makeBuffer[21] = 'S';
-    makeBuffer[22] = 'T';
+    makeBuffer[19] = 'N';
+    makeBuffer[20] = 'B';
+    makeBuffer[21] = '-';
+    makeBuffer[22] = 't';
+	makeBuffer[23] = 'e';
+	makeBuffer[24] = 's';
+	makeBuffer[25] = 't';
+	makeBuffer[26] = '-';
+	makeBuffer[27] = 'd';
+	makeBuffer[28] = 'e';
+	makeBuffer[29] = 'v';
+	makeBuffer[30] = 'i';
+	makeBuffer[31] = 'c';
+	makeBuffer[32] = 'e';
 
     //FW Ver Length
-    makeBuffer[23] = 0x04;
+    makeBuffer[33] = 0x04;
     //FW Ver V1.0
-    makeBuffer[24] = 'V';
-    makeBuffer[25] = '1';
-    makeBuffer[26] = '.';
-    makeBuffer[27] = '0';
+    makeBuffer[34] = 'V';
+    makeBuffer[35] = '1';
+    makeBuffer[36] = '.';
+    makeBuffer[37] = '0';
 
     //Get TX Power
 	intValue = 0;
@@ -1138,28 +1148,28 @@ int TPB23::reportDevice()
     //TX Power
     if( intValue < 0 )
     {
-      makeBuffer[28] = 0x01;
+      makeBuffer[38] = 0x01;
       intValue *= (-1);
     }
     else
-      makeBuffer[28] = 0x00;
+      makeBuffer[38] = 0x00;
 
     intValue /= 10;
-    makeBuffer[29] = (( intValue / 10 ) << 4 ) + ( intValue % 10 );
-	SWIR_TRACE(F("TxPOWER/10 : %d, buffer[29] : %d\n"), intValue, makeBuffer[29] );
+    makeBuffer[39] = (( intValue / 10 ) << 4 ) + ( intValue % 10 );
+	SWIR_TRACE(F("TxPOWER/10 : %d, buffer[29] : %d\n"), intValue, makeBuffer[39] );
 
     //Position coordinates
     for(i=0;i<11;i++)
-      makeBuffer[30+i] = 0x00;
+      makeBuffer[40+i] = 0x00;
     
     //Reserve Maximum 20byte
-    makeBuffer[41] = 0x00;
+    makeBuffer[51] = 0x00;
 
     if(socketCreate(50000, 0) == 0) 
 		SWIR_TRACE(F("Socket Create!!!\n"));
 
     /* Socket Send */
-    if(socketSend(_IP, _PORT, makeBuffer, 42) == 0){
+    if(socketSend(_IP, _PORT, makeBuffer, 52) == 0){
 		SWIR_TRACE(F("Socket Send!!!\n"));
 		intValue = 0;
     }
