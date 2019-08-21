@@ -61,6 +61,21 @@ int	TPB23::init()
 	return ret;
 }
 
+int TPB23::getCCLK(char* szCCLK, int nBufferSize)
+{
+    char    szCmd[16];
+    int     ret;
+
+    memset(szCCLK, 0, nBufferSize);
+
+	strcpy(szCmd, "AT+CCLK?");
+    ret = sendATcmd(szCmd, szCCLK, nBufferSize, "+CCLK:");
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
 int TPB23::getCGMR(char* szCGMR, int nBufferSize)
 {
     char    szCmd[16];
@@ -558,6 +573,82 @@ int TPB23::socketCreate(unsigned long localPort, int enableRecv)
 	return (strlen(recvBuf) > 0 ? 0 : 1); 
 }
 
+int TPB23::tcpSocketCreate(unsigned long localPort, int enableRecv)
+{
+	char    szCmd[32];
+	char	recvBuf[16];
+	char*   aLine[NB_LINE];  //read up to 20 lines
+
+	_enableRecv = enableRecv; 
+
+    sprintf(szCmd, "AT+NSOCR=STREAM,6,%ld,%d",localPort, _enableRecv);
+    int nNbLine = sendATcmd(szCmd, aLine, NB_LINE);
+
+	char*  sLine;
+	memset(recvBuf, 0, sizeof(recvBuf));
+
+	for (int i=0; i<nNbLine; i++)
+	{   
+		sLine = aLine[i];
+
+		char* pTemp = sLine;
+		while (pTemp < (sLine+strlen(sLine)))       //trim ending
+		{
+			if (*pTemp == '\r') //remove cariage return
+			{
+				*pTemp = 0; //zero terminate string
+				break;
+			}
+			if (*pTemp == '\n') //remove cariage return
+			{
+				*pTemp = 0; //zero terminate string
+				break;
+			}
+			pTemp++;
+		}
+
+		int nLen = strlen(sLine);
+		if (nLen != 1) 
+		{
+            free(aLine[i]);
+			continue;
+		}
+		for (int k=0; k<nLen; k++)
+		{
+			if (sLine[k] < '0' || sLine[k] > '6')
+			{
+				continue;
+			}
+		}
+		strcpy(recvBuf, sLine);
+
+		_nSocket = atoi(recvBuf);
+		SWIR_TRACE(F("Socket Number : %d\r\n"), _nSocket);
+
+		free(aLine[i]);
+	}   
+
+	SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+	return (strlen(recvBuf) > 0 ? 0 : 1); 
+}
+
+int TPB23::tcpSocketConnect(char* remoteIP, unsigned long remotePort)
+{
+	char    szCmd[64];
+	char	recvBuf[16];
+	int		ret;
+
+    sprintf(szCmd, "AT+NSOCO=%d,%s,%ld", _nSocket, remoteIP, remotePort);
+
+	ret = sendATcmd(szCmd, recvBuf, sizeof(recvBuf), "OK");
+
+    SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    return ret;
+}
+
+
 int TPB23::socketClose()
 {
 	char    szCmd[16];
@@ -576,6 +667,67 @@ int TPB23::socketClose()
 #define NIBBLE_TO_HEX_CHAR(i) ((i <= 9) ? ('0' + i) : ('A' - 10 + i))
 #define HIGH_NIBBLE(i) ((i >> 4) & 0x0F)
 #define LOW_NIBBLE(i) (i & 0x0F)
+
+int TPB23::tcpSocketSend(char* buffer, int size)
+{
+	char	resBuffer[16];
+    char*   sendBuffer;
+    char*   pSendBuffer;
+	int		ret, pSeek, bufferSize;
+
+	_serial.setTimeout(10000);
+	TPB23_serial_clearbuf();
+
+//	if( size > 100 )    //Send Data Size up to 100 bytes
+//		return 1;
+
+    bufferSize = (size * 2) + 56;
+
+    sendBuffer = (char *)malloc(bufferSize);
+
+	SWIR_TRACE(F("Send free memeory %d Bytes\r\n"), TPB23_freeRam());
+
+    memset(sendBuffer, 0, bufferSize);
+
+    sprintf(sendBuffer, "AT+NSOSD=%d,%d,", _nSocket, size);
+
+    pSeek = strlen(sendBuffer);
+	SWIR_TRACE(F("sendBuffer (%s)..."), sendBuffer);
+    SWIR_TRACE(F("pSeek [%d]\n"), pSeek);
+    pSendBuffer = sendBuffer;
+    pSendBuffer += pSeek;
+
+	for (size_t i = 0; i < size; ++i) {
+	    *pSendBuffer = (static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(buffer[i]))));
+        *pSendBuffer++;
+		*pSendBuffer = (static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(buffer[i]))));
+        *pSendBuffer++;
+	}
+
+    _serial.println(sendBuffer);
+//	 SWIR_TRACE(F("sendBuffer (%s)..."), sendBuffer);
+
+    free(sendBuffer);
+
+	ret = readATresponseLine(resBuffer, sizeof(resBuffer), "OK", 5000);
+
+	if(_enableRecv)
+	{	
+		ret = readATresponseLine(resBuffer, sizeof(resBuffer), "+NSONMI:", 8000);
+		if(!ret){				
+			sscanf(resBuffer, "%*d,%d", &_readUDP);
+			SWIR_TRACE(F("readData : %d \r\n"), _readUDP);
+			ret = 0;
+		}
+		SWIR_TRACE(F("free memeory %d Bytes\r\n"), TPB23_freeRam());
+	}
+	return ret;
+}
+
+int TPB23::tcpSocketSend(const char* str)
+{
+	return tcpSocketSend((char *)str, strlen(str));
+}
 
 int TPB23::socketSend(char* remoteIP,unsigned long remotePort, char* buffer, int size)
 {

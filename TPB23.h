@@ -25,6 +25,11 @@ class TPB23
 	 */
 	int init(void);
 
+	/*
+	 * Return current date & time.
+	 */
+	int getCCLK(char* szCCLK, int nBufferSize);
+
     /*
 	 * Request Manufacturer Revision.
 	 */
@@ -101,9 +106,26 @@ class TPB23
     int socketCreate(unsigned long localPort, int enableRecv=1);
 
 	/*
-	 * Close UDP Socket.
+	 * Create TCP Socket.	listen port (0-65535, except 5683)
+	 */
+    int tcpSocketCreate(unsigned long localPort, int enableRecv=0);
+
+	/*
+	 * Connect TCP Socket.	listen port (0-65535)
+	 */
+    int tcpSocketConnect(char* remoteIP, unsigned long remotePort);
+
+	/*
+	 * Close UDP/TCP Socket.
 	 */
     int socketClose(void);
+
+	/*
+	 * Send TCP Socket.
+	 */
+	int tcpSocketSend(char* buffer, int size);
+
+	int tcpSocketSend(const char* str);
 
 	/*
 	 * Send UDP Socket.
